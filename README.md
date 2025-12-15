@@ -1,4 +1,4 @@
-# 🧠 RAG QA Evaluation Logs & Corpus — Synthetic Multi-Table RAG Benchmark
+# 🧠 RAG QA Logs & Corpus — Synthetic Multi-Table RAG Benchmark
 
 **Author:** [Tarek Masryo](https://github.com/tarekmasryo) · [Kaggle](https://www.kaggle.com/tarekmasryo)
 
