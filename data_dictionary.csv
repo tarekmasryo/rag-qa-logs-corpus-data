@@ -1,0 +1,100 @@
+table_name,column_name,dtype,description,allowed_values
+rag_corpus_documents,doc_id,string,Unique identifier for each document.,Pattern: DOC[0-9]{4}
+rag_corpus_documents,domain,string,"High level domain or category of the document (support, product_docs, medical_guides, etc.).","customer_success, data_platform_docs, developer_docs, financial_reports, hr_policies, marketing_analytics, medical_guides, mlops_docs, policies, product_docs, research_papers, support_faq"
+rag_corpus_documents,title,text,Short title of the document.,
+rag_corpus_documents,source_type,category,"Source type of the document (kb_article, runbook, policy_pdf, report, etc.).","internal_doc, notebook, pdf_manual, policy_file, spreadsheet, web_article, wiki_page"
+rag_corpus_documents,language,string,"Language of the document, usually ISO language code (e.g., en).",en
+rag_corpus_documents,n_sections,int,Number of logical sections inside the document.,
+rag_corpus_documents,n_tokens,int,Estimated total token count for the full document.,
+rag_corpus_documents,n_chunks,int,Number of chunks the document is split into for retrieval.,
+rag_corpus_documents,avg_chunk_tokens,float,Average token count per chunk for this document.,
+rag_corpus_documents,created_at_utc,datetime,UTC timestamp when the document was first created in the corpus.,
+rag_corpus_documents,last_updated_at_utc,datetime,UTC timestamp when the document was last updated.,
+rag_corpus_documents,is_active,int,Whether the document is currently active and used by the RAG system.,0/1
+rag_corpus_documents,contains_tables,int,Whether the document contains tabular data.,0/1
+rag_corpus_documents,pii_risk_level,category,Qualitative PII risk for this document.,"low, medium, none"
+rag_corpus_documents,security_tier,category,Security classification tier for the document.,"highly_restricted, internal, public, restricted"
+rag_corpus_documents,embedding_model,string,Name of the embedding model used to embed this document.,"all-minilm-l12-v2, bge-m3, e5-mistral-7b, gte-large, text-embedding-3-large, text-embedding-3-small"
+rag_corpus_documents,owner_team,string,Logical team or function that owns the document content.,"data, engineering, finance, hr, legal, marketing, product, support"
+rag_corpus_documents,search_index,string,Search index or collection name where this document is indexed.,Index name (string)
+rag_corpus_documents,top_keywords,text,"Representative keywords extracted for the document, stored as a short text list.",
+rag_corpus_chunks,chunk_id,string,Unique identifier for each text chunk in the corpus.,Pattern: C[0-9]{5}
+rag_corpus_chunks,doc_id,string,Identifier of the parent document that this chunk belongs to.,Pattern: DOC[0-9]{4}
+rag_corpus_chunks,domain,string,"Domain of the parent document, repeated for convenience.","customer_success, data_platform_docs, developer_docs, financial_reports, hr_policies, marketing_analytics, medical_guides, mlops_docs, policies, product_docs, research_papers, support_faq"
+rag_corpus_chunks,chunk_index,int,Index of the chunk within its parent document (0 based).,
+rag_corpus_chunks,estimated_tokens,int,Estimated token count for the chunk text.,
+rag_corpus_chunks,chunk_text,text,Raw text content of the chunk used for retrieval.,
+rag_retrieval_events,run_id,string,Identifier of the QA evaluation run this retrieval event belongs to. Links to rag_qa_eval_runs.run_id.,Pattern: run_[0-9]+
+rag_retrieval_events,chunk_id,string,Identifier of the retrieved chunk. Links to rag_corpus_chunks.chunk_id.,Pattern: C[0-9]{5}
+rag_retrieval_events,rank,int,Rank position of the chunk in the retrieved list (1 = top ranked).,
+rag_retrieval_events,retrieval_score,float,Raw retrieval score for the chunk (higher is more similar or relevant).,
+rag_retrieval_events,is_relevant,int,Whether this chunk is labeled as relevant to the query.,"0 / 1 (0 = not relevant, 1 = relevant)"
+rag_retrieval_events,query_domain,string,Domain of the question/query being evaluated (not the chunk domain).,"developer_docs, financial_reports, hr_policies, medical_guides, policies, product_docs, research_papers, support_faq"
+rag_retrieval_events,difficulty,category,Difficulty label of the underlying QA example.,"easy, hard, medium"
+rag_retrieval_events,retrieval_strategy,category,Retrieval strategy used in this run.,"bm25, bm25_then_rerank, dense, dense_then_rerank, hybrid"
+rag_retrieval_events,example_id,string,Identifier of the QA example (scenario) used for this run.,Pattern: QA[0-9]{6}
+rag_retrieval_events,scenario_id,string,Scenario identifier for the query (denormalized for convenience).,Pattern: SC[0-9]{4}
+rag_qa_eval_runs,example_id,string,Identifier for the QA example that this run is evaluating.,Pattern: QA[0-9]{6}
+rag_qa_eval_runs,run_id,string,Unique identifier for this evaluation run. Joins with rag_retrieval_events.run_id.,Pattern: run_[0-9]+
+rag_qa_eval_runs,domain,string,Domain or topic of the QA example.,"developer_docs, financial_reports, hr_policies, medical_guides, policies, product_docs, research_papers, support_faq"
+rag_qa_eval_runs,task_type,string,"High level task type for the run (e.g., qa, summarization, classification).","comparison, explanation, factoid, instruction_following, multi_hop, summarization, table_qa, temporal_reasoning"
+rag_qa_eval_runs,difficulty,category,"Observed difficulty label for the QA example (easy, medium, hard), derived from retrieval quality, hallucination, and correctness.","easy, hard, medium"
+rag_qa_eval_runs,query,text,Natural language query or question posed to the RAG system.,
+rag_qa_eval_runs,gold_answer,text,Reference answer used as the gold standard for evaluation.,
+rag_qa_eval_runs,answer_tokens,int,Approximate token count of the model answer.,
+rag_qa_eval_runs,is_correct,int,"Binary correctness label for the final answer (1 = sufficiently correct, 0 = not correct). Coarser, binary view of the same signal represented by correctness_label.","[0, 1]"
+rag_qa_eval_runs,correctness_label,category,"Multi-class correctness label for the final answer, for example correct / partial / incorrect. More fine-grained view of overall correctness than is_correct.","correct, incorrect, partial"
+rag_qa_eval_runs,faithfulness_label,category,"Multi-class faithfulness label capturing how well the answer is grounded in retrieved evidence (e.g., faithful / unfaithful / unknown).","faithful, unfaithful, unknown"
+rag_qa_eval_runs,hallucination_flag,int,"Binary hallucination label (1 = hallucination present, 0 = no hallucination detected). Related to the more fine-grained faithfulness_label.",0/1
+rag_qa_eval_runs,retrieval_strategy,category,Retrieval strategy used for this run.,"bm25, bm25_then_rerank, dense, dense_then_rerank, hybrid"
+rag_qa_eval_runs,chunking_strategy,category,Chunking strategy used when building the corpus.,"by_heading, fixed_512_tokens, semantic, sliding_window_256_overlap"
+rag_qa_eval_runs,n_retrieved_chunks,int,"Total number of chunks returned by the retriever for this query. May be larger than the number of rows stored in rag_retrieval_events, which usually logs only the top-k results for analysis (e.g., top 10).",
+rag_qa_eval_runs,top1_score,float,Retrieval score of the highest ranked chunk in this run.,
+rag_qa_eval_runs,mean_retrieved_score,float,Mean retrieval score across all retrieved chunks for this run.,
+rag_qa_eval_runs,recall_at_5,float,Binary recall@5 of relevant chunks for this QA example.,
+rag_qa_eval_runs,recall_at_10,float,Binary recall@10 of relevant chunks for this QA example.,
+rag_qa_eval_runs,mrr_at_10,float,Mean reciprocal rank@10 for this QA example.,
+rag_qa_eval_runs,used_long_context_window,int,Flag indicating whether the run was configured to allow a longer context window (not strictly derived from context_window_tokens).,0/1
+rag_qa_eval_runs,context_window_tokens,int,Maximum context window size in tokens used for this run.,
+rag_qa_eval_runs,latency_ms_retrieval,int,Time taken by retrieval in milliseconds.,
+rag_qa_eval_runs,latency_ms_generation,int,Time taken by answer generation in milliseconds.,
+rag_qa_eval_runs,total_latency_ms,int,Total end to end latency in milliseconds (retrieval + generation + overhead).,
+rag_qa_eval_runs,embedding_model,string,Name of the embedding model powering the retriever.,"all-minilm-l12-v2, bge-m3, e5-mistral-7b, gte-large, text-embedding-3-large, text-embedding-3-small"
+rag_qa_eval_runs,reranker_model,string,"Name of the reranker model, if used.","bge-reranker-base, colbert-v2, cross-encoder-ms-marco, gte-qwen-reranker, jina-reranker-v1, none"
+rag_qa_eval_runs,doc_ids_used,text,"Pipe separated list of document IDs that contributed context in this run. (Pipe-delimited; represents top-k chunks/docs used to build the generation prompt, not all retrieved chunks.)",Pipe-delimited list of IDs (top-k prompt context)
+rag_qa_eval_runs,chunk_ids_used,text,"Pipe separated list of chunk IDs that contributed context in this run. (Pipe-delimited; represents top-k chunks/docs used to build the generation prompt, not all retrieved chunks.)",Pipe-delimited list of IDs (top-k prompt context)
+rag_qa_eval_runs,supervising_judge_label,category,Label from an external or supervising judge model or human.,"borderline, fail, pass"
+rag_qa_eval_runs,eval_mode,category,Evaluation mode used for this run.,"human_eval, no_answer_probe, offline_batch, online_shadow"
+rag_qa_eval_runs,user_feedback_label,category,Optional user feedback label for this answer.,"dissatisfied, negative, neutral, no_feedback, positive, satisfied, very_negative, very_positive"
+rag_qa_eval_runs,created_at_utc,datetime,UTC timestamp when this run record was created.,
+rag_qa_eval_runs,generator_model,string,Name of the LLM / generator model used to produce the answer.,"claude-3.5-sonnet, gpt-4o, gpt-4o-mini, llama-3.1-70b-instruct, llama-3.1-8b-instruct, mistral-large"
+rag_qa_eval_runs,temperature,float,Sampling temperature used for generation.,
+rag_qa_eval_runs,top_p,float,Top-p nucleus sampling parameter used for generation.,
+rag_qa_eval_runs,max_new_tokens,int,Maximum number of new tokens allowed for the generated answer.,
+rag_qa_eval_runs,stop_reason,string,"Reason why the generation stopped (length, stop_sequence, end_of_turn, etc.).","eos, error, length"
+rag_qa_eval_runs,prompt_tokens,int,Number of tokens in the prompt / input context.,
+rag_qa_eval_runs,total_cost_usd,float,"Approximate total cost of the run in USD, based on token consumption.",
+rag_qa_scenarios,scenario_id,string,"Unique identifier for the QA scenario (SC001, SC002, ...).",Pattern: SC[0-9]{4}
+rag_qa_scenarios,domain,string,"Domain of the scenario, aligned with corpus document domains.","analytics_reports, customer_success, data_platform_docs, developer_docs, financial_reports, hr_policies, marketing_analytics, medical_guides, mlops_docs, policies, product_docs, research_papers, security_runbooks, support_faq"
+rag_qa_scenarios,primary_doc_id,string,Primary document ID that contains the canonical answer content.,Pattern: DOC[0-9]{4}
+rag_qa_scenarios,query,text,User facing question or query for this scenario.,
+rag_qa_scenarios,gold_answer,text,"Gold reference answer for this scenario, grounded in the primary document.",
+rag_qa_scenarios,difficulty_level,category,Scenario difficulty level.,"easy, hard, medium"
+rag_qa_scenarios,scenario_type,category,"Short label describing the scenario type (policy_lookup, troubleshooting, monitoring, etc.).","standard_qa, no_answer_probe"
+rag_qa_scenarios,use_case,category,"Intended team or function that would typically ask this question (customer_support, clinical_support, etc.).","analytics_team, clinical_support, customer_success, customer_support, data_platform_team, engineering, executive_reporting, finance_team, hr_team, marketing_team, mlops_engineering, no_answer_detection, operations, product_management, research, security_admin, security_compliance"
+rag_qa_eval_runs,scenario_id,string,Identifier linking each QA example to a high-level scenario in rag_qa_scenarios.,Pattern: SC[0-9]{4}
+rag_qa_scenarios,has_answer_in_corpus,int,"1 if the scenario is constructed such that the answer exists somewhere in the corpus, 0 for explicit no-answer probes.",0 / 1
+rag_qa_eval_runs,has_answer_in_corpus,int,Flag indicating whether the underlying scenario has an answer in the corpus (1) or is a no-answer probe (0).,0 / 1
+rag_qa_eval_runs,is_noanswer_probe,int,Flag marking queries intentionally designed to have no valid answer in the corpus (no-answer probes). Only a small fraction of examples use this mode.,0 / 1
+rag_qa_eval_runs,has_relevant_in_top5,int,Flag indicating whether at least one relevant chunk was retrieved within the top 5 ranks. Derived from relevance labels in rag_retrieval_events.,0 / 1
+rag_qa_eval_runs,has_relevant_in_top10,int,Flag indicating whether at least one relevant chunk was retrieved within the top 10 ranks. Typically derived from recall_at_10.,0 / 1
+rag_qa_eval_runs,answered_without_retrieval,int,Flag set to 1 when the model produced a correct answer even though recall_at_10 = 0 and the answer exists somewhere in the corpus; 0 otherwise.,0 / 1
+rag_qa_scenarios,n_eval_examples,int,Number of QA evaluation examples in rag_qa_eval_runs that reference this scenario_id.,>= 0
+rag_qa_scenarios,is_used_in_eval,int,"1 if this scenario_id appears at least once in rag_qa_eval_runs, 0 otherwise.",0 / 1
+rag_qa_scenarios,query_id,string,Stable identifier for the unique query text used across scenarios and runs.,Pattern: Q[0-9]{4}
+rag_qa_scenarios,split,category,Recommended ML split assigned deterministically by query_id to avoid leakage.,"train, val, test"
+rag_qa_eval_runs,query_id,string,Stable identifier for the query text in this evaluation example.,Pattern: Q[0-9]{4}
+rag_qa_eval_runs,split,category,Recommended ML split assigned deterministically by query_id.,"train, val, test"
+rag_qa_eval_runs,run_config_id,string,Deterministic hash identifier for the run configuration (model + decoding + retrieval + chunking).,Pattern: CFG[A-F0-9]{10}
+rag_retrieval_events,query_id,string,Stable identifier for the query associated with this retrieval event (via example_id).,Pattern: Q[0-9]{4}
+rag_retrieval_events,split,category,Recommended ML split assigned deterministically by query_id (via example_id).,"train, val, test"

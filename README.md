@@ -52,9 +52,9 @@ This repository contains the following CSV files:
 - `rag_corpus_documents.csv`
 - `rag_corpus_chunks.csv`
 - `rag_retrieval_events.csv`
-- `eval_runs.csv`
-- `scenarios.csv`
-- `data_dictionary.csv`
+- `rag_qa_eval_runs.csv`
+- `rag_qa_scenarios.csv`
+- `data_dictionary.csv` (canonical; a copy also lives in `docs/data_dictionary.csv`)
 
 All files:
 - use **snake_case** column names
@@ -70,8 +70,8 @@ All files:
 | `rag_corpus_documents.csv` | 658 | 19 | One row per document in the corpus |
 | `rag_corpus_chunks.csv` | 5,237 | 6 | One row per chunk derived from a document |
 | `rag_retrieval_events.csv` | 93,375 | 12 | One row per retrieved chunk per example (rank/score/relevance) |
-| `eval_runs.csv` | 3,824 | 49 | One row per QA evaluation example (quality + cost + latency + config) |
-| `scenarios.csv` | 62 | 13 | One row per scenario template / use case |
+| `rag_qa_eval_runs.csv` | 3,824 | 49 | One row per QA evaluation example (quality + cost + latency + config) |
+| `rag_qa_scenarios.csv` | 62 | 13 | One row per scenario template / use case |
 | `data_dictionary.csv` | 99 | 5 | One row per column definition across all tables |
 
 ---
@@ -108,8 +108,8 @@ import pandas as pd
 docs = pd.read_csv("rag_corpus_documents.csv")
 chunks = pd.read_csv("rag_corpus_chunks.csv")
 events = pd.read_csv("rag_retrieval_events.csv")
-runs = pd.read_csv("eval_runs.csv")
-scenarios = pd.read_csv("scenarios.csv")
+runs = pd.read_csv("rag_qa_eval_runs.csv")
+scenarios = pd.read_csv("rag_qa_scenarios.csv")
 
 print(docs.shape, chunks.shape, events.shape, runs.shape, scenarios.shape)
 ```
@@ -189,8 +189,8 @@ by_strategy
 - `table_name`, `column_name`, `dtype`, `description`, `allowed_values`
 
 **Important:** `table_name` may use logical names (e.g., `rag_qa_eval_runs`, `rag_qa_scenarios`) even though the actual filenames are:
-- `eval_runs.csv`
-- `scenarios.csv`
+- `rag_qa_eval_runs.csv`
+- `rag_qa_scenarios.csv`
 
 If you want strict 1:1 naming:
 - either rename the CSV files to match the dictionary, **or**
