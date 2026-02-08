@@ -85,11 +85,11 @@ All files:
 - `rag_retrieval_events.chunk_id = rag_corpus_chunks.chunk_id`
 
 ### Eval Runs → Retrieval Events
-- `eval_runs.example_id = rag_retrieval_events.example_id`  
+- `rag_qa_eval_runs.example_id = rag_retrieval_events.example_id`  
   (also `run_id`, `scenario_id`, `query_id`, `split` are available for consistency checks)
 
 ### Eval Runs → Scenarios
-- `eval_runs.scenario_id = scenarios.scenario_id`  
+- `rag_qa_eval_runs.scenario_id = rag_qa_scenarios.scenario_id`  
   (and `query_id`)
 
 ---
@@ -105,11 +105,11 @@ pip install pandas
 ```python
 import pandas as pd
 
-docs = pd.read_csv("rag_corpus_documents.csv")
-chunks = pd.read_csv("rag_corpus_chunks.csv")
-events = pd.read_csv("rag_retrieval_events.csv")
-runs = pd.read_csv("rag_qa_eval_runs.csv")
-scenarios = pd.read_csv("rag_qa_scenarios.csv")
+docs = pd.read_csv("data/rag_corpus_documents.csv")
+chunks = pd.read_csv("data/rag_corpus_chunks.csv")
+events = pd.read_csv("data/rag_retrieval_events.csv")
+runs = pd.read_csv("data/rag_qa_eval_runs.csv")
+scenarios = pd.read_csv("data/rag_qa_scenarios.csv")
 
 print(docs.shape, chunks.shape, events.shape, runs.shape, scenarios.shape)
 ```

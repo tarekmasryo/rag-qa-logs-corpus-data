@@ -2,12 +2,14 @@ cff-version: 1.2.0
 message: "If you use this dataset, please cite it."
 title: "RAG QA Logs & Corpus — Synthetic Multi-Table RAG Benchmark"
 type: dataset
+version: 1.0.1
 authors:
   - family-names: "Masryo"
     given-names: "Tarek"
 license: "CC-BY-4.0"
 repository-code: "https://github.com/tarekmasryo/rag-qa-logs-corpus-data"
-date-released: "2026-02-08"
+url: "https://www.kaggle.com/datasets/tarekmasryo/rag-qa-evaluation-logs-and-corpus"
+date-released: 2025-12-14
 keywords:
   - rag
   - llmops
