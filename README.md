@@ -96,6 +96,28 @@ All files:
 
 ## 🚀 Quickstart (Python)
 
+### Helper scripts (on-ramp)
+
+```bash
+# validate relational integrity + basic sanity checks
+python scripts/validate_dataset.py --data-dir data
+
+# generate a lightweight stats report (markdown)
+python scripts/summarize_dataset.py --data-dir data --out docs/dataset_stats.md
+
+# build a single “flat” table for dashboards / EDA
+python scripts/build_flat_table.py --data-dir data --out data/derived/flat_rag_events.parquet
+
+# create a small relational sample for quick demos/tests
+python scripts/make_sample.py --data-dir data --out data/sample --n-events 5000 --seed 42
+```
+
+Docs:
+- `docs/schema_join_map.md` (join map)
+- `docs/sql_examples.md` (SQL starter queries)
+- `docs/dataset_stats.md` (generated stats summary)
+
+
 ### Install
 ```bash
 pip install pandas

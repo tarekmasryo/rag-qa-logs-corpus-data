@@ -17,3 +17,10 @@ Thumbs.db
 .idea/
 
 # Data (keep dataset CSVs tracked; do NOT ignore data/)
+# Ruff / Pytest caches
+.ruff_cache/
+.pytest_cache/
+# Virtual environments
+# Derived outputs (keep raw CSVs tracked)
+data/derived/
+data/sample/

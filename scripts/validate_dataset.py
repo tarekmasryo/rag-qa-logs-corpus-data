@@ -7,7 +7,8 @@ Usage:
 This script focuses on:
 - Primary key uniqueness
 - Foreign key integrity across tables
-- Basic range / enum sanity checks
+- Enum / boolean sanity checks
+- Basic range checks for cost/latency/metrics
 """
 
 from __future__ import annotations
@@ -15,34 +16,45 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import pandas as pd
 
-
-def _fail(msg: str) -> None:
-    raise AssertionError(msg)
-
-
-def _read_csv(path: Path) -> pd.DataFrame:
-    # Keep it simple and robust. We avoid aggressive dtype casting to reduce
-    # accidental parse failures on mixed columns.
-    return pd.read_csv(path, low_memory=False)
+FILES = {
+    "documents": "rag_corpus_documents.csv",
+    "chunks": "rag_corpus_chunks.csv",
+    "runs": "rag_qa_eval_runs.csv",
+    "scenarios": "rag_qa_scenarios.csv",
+    "events": "rag_retrieval_events.csv",
+}
 
 
-def _assert_columns(df: pd.DataFrame, required: Iterable[str], table: str) -> None:
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        _fail(f"[{table}] missing required columns: {missing}")
+def _read(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path)
 
 
-def _assert_unique(df: pd.DataFrame, col: str, table: str) -> None:
-    if col not in df.columns:
-        _fail(f"[{table}] expected primary key column '{col}' but it is missing")
-    dup = df[col].duplicated(keep=False)
+def _assert(cond: bool, msg: str) -> None:
+    if not cond:
+        raise AssertionError(msg)
+
+
+def _assert_columns(df: pd.DataFrame, cols: Sequence[str], table: str) -> None:
+    missing = [c for c in cols if c not in df.columns]
+    _assert(not missing, f"{table}: missing required columns: {missing}")
+
+
+def _assert_unique(df: pd.DataFrame, cols: Sequence[str], table: str) -> None:
+    dup = df.duplicated(list(cols), keep=False)
     if dup.any():
-        sample = df.loc[dup, col].astype(str).head(10).tolist()
-        _fail(f"[{table}] primary key '{col}' has duplicates. Sample: {sample}")
+        sample = df.loc[dup, list(cols)].head(5).to_dict("records")
+        raise AssertionError(f"{table}: duplicate key {list(cols)}. Sample: {sample}")
+
+
+def _assert_not_null(df: pd.DataFrame, cols: Sequence[str], table: str) -> None:
+    for c in cols:
+        if c in df.columns:
+            n = int(df[c].isna().sum())
+            _assert(n == 0, f"{table}.{c}: contains {n} nulls")
 
 
 def _assert_fk(
@@ -50,126 +62,160 @@ def _assert_fk(
     child_col: str,
     parent: pd.DataFrame,
     parent_col: str,
-    child_table: str,
-    parent_table: str,
+    name: str,
 ) -> None:
-    _assert_columns(child, [child_col], child_table)
-    _assert_columns(parent, [parent_col], parent_table)
-
-    child_vals = set(child[child_col].dropna().unique())
-    parent_vals = set(parent[parent_col].dropna().unique())
-
-    missing = child_vals - parent_vals
-    if missing:
-        sample = list(sorted(missing))[:10]
-        _fail(
-            f"[{child_table}] FK violation: '{child_col}' has {len(missing)} values not present in "
-            f"[{parent_table}].{parent_col}. Sample: {sample}"
-        )
+    if child_col not in child.columns or parent_col not in parent.columns:
+        return
+    child_vals = set(child[child_col].dropna().astype(str).unique())
+    parent_vals = set(parent[parent_col].dropna().astype(str).unique())
+    missing = sorted(list(child_vals - parent_vals))[:10]
+    _assert(len(missing) == 0, f"{name}: missing FK targets (showing up to 10): {missing}")
 
 
-def _assert_in_set(series: pd.Series, allowed: set[object], label: str) -> None:
-    values = series.dropna().unique().tolist()
-    bad = [v for v in values if v not in allowed]
-    if bad:
-        sample = [str(v) for v in bad[:10]]
-        _fail(f"[{label}] contains unexpected values. Sample: {sample}")
+def _assert_in_set(series: pd.Series, allowed: Iterable, name: str) -> None:
+    s = series.dropna()
+    bad = s[~s.isin(list(allowed))]
+    if not bad.empty:
+        sample = bad.head(10).tolist()
+        raise AssertionError(f"{name}: values outside allowed set. Sample: {sample}")
+
+
+def _assert_range(series: pd.Series, lo: float | None, hi: float | None, name: str) -> None:
+    s = pd.to_numeric(series, errors="coerce")
+    s = s.dropna()
+    if s.empty:
+        return
+    if lo is not None:
+        bad = s[s < lo]
+        if not bad.empty:
+            raise AssertionError(f"{name}: values < {lo}. Sample: {bad.head(10).tolist()}")
+    if hi is not None:
+        bad = s[s > hi]
+        if not bad.empty:
+            raise AssertionError(f"{name}: values > {hi}. Sample: {bad.head(10).tolist()}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Validate dataset integrity for RAG QA Logs & Corpus"
-    )
-    parser.add_argument(
-        "--data-dir",
-        type=str,
-        default="data",
-        help="Path to dataset data directory",
-    )
-    args = parser.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data-dir", type=str, default="data", help="Directory with dataset CSVs")
+    args = ap.parse_args()
 
     data_dir = Path(args.data_dir)
-    if not data_dir.exists():
-        _fail(f"Data directory not found: {data_dir.resolve()}")
 
-    paths = {
-        "rag_corpus_documents": data_dir / "rag_corpus_documents.csv",
-        "rag_corpus_chunks": data_dir / "rag_corpus_chunks.csv",
-        "rag_retrieval_events": data_dir / "rag_retrieval_events.csv",
-        "rag_qa_eval_runs": data_dir / "rag_qa_eval_runs.csv",
-        "rag_qa_scenarios": data_dir / "rag_qa_scenarios.csv",
-    }
+    documents = _read(data_dir / FILES["documents"])
+    chunks = _read(data_dir / FILES["chunks"])
+    runs = _read(data_dir / FILES["runs"])
+    scenarios = _read(data_dir / FILES["scenarios"])
+    events = _read(data_dir / FILES["events"])
 
-    for name, p in paths.items():
-        if not p.exists():
-            _fail(f"Missing required file for [{name}]: {p}")
+    # Required columns
+    _assert_columns(documents, ["doc_id"], "rag_corpus_documents")
+    _assert_columns(chunks, ["chunk_id", "doc_id"], "rag_corpus_chunks")
+    _assert_columns(scenarios, ["scenario_id"], "rag_qa_scenarios")
+    _assert_columns(
+        runs,
+        ["run_id", "scenario_id", "example_id", "query_id"],
+        "rag_qa_eval_runs",
+    )
+    _assert_columns(
+        events,
+        ["run_id", "chunk_id", "rank", "is_relevant"],
+        "rag_retrieval_events",
+    )
 
-    docs = _read_csv(paths["rag_corpus_documents"])
-    chunks = _read_csv(paths["rag_corpus_chunks"])
-    events = _read_csv(paths["rag_retrieval_events"])
-    runs = _read_csv(paths["rag_qa_eval_runs"])
-    scenarios = _read_csv(paths["rag_qa_scenarios"])
+    # PK uniqueness
+    _assert_unique(documents, ["doc_id"], "rag_corpus_documents")
+    _assert_unique(chunks, ["chunk_id"], "rag_corpus_chunks")
+    _assert_unique(scenarios, ["scenario_id"], "rag_qa_scenarios")
+    _assert_unique(runs, ["run_id"], "rag_qa_eval_runs")
+    _assert_unique(events, ["run_id", "chunk_id", "rank"], "rag_retrieval_events")
 
-    # Primary keys
-    _assert_unique(docs, "doc_id", "rag_corpus_documents")
-    _assert_unique(chunks, "chunk_id", "rag_corpus_chunks")
-    _assert_unique(runs, "example_id", "rag_qa_eval_runs")
-    _assert_unique(scenarios, "scenario_id", "rag_qa_scenarios")
+    # Not-null policy (keys)
+    _assert_not_null(documents, ["doc_id"], "rag_corpus_documents")
+    _assert_not_null(chunks, ["chunk_id", "doc_id"], "rag_corpus_chunks")
+    _assert_not_null(scenarios, ["scenario_id"], "rag_qa_scenarios")
+    _assert_not_null(
+        runs,
+        ["run_id", "scenario_id", "example_id", "query_id"],
+        "rag_qa_eval_runs",
+    )
+    _assert_not_null(events, ["run_id", "chunk_id", "rank"], "rag_retrieval_events")
 
-    # Foreign keys (joins)
-    _assert_fk(chunks, "doc_id", docs, "doc_id", "rag_corpus_chunks", "rag_corpus_documents")
-    _assert_fk(events, "chunk_id", chunks, "chunk_id", "rag_retrieval_events", "rag_corpus_chunks")
-    _assert_fk(events, "example_id", runs, "example_id", "rag_retrieval_events", "rag_qa_eval_runs")
+    # Foreign keys
+    _assert_fk(chunks, "doc_id", documents, "doc_id", "chunks.doc_id -> documents.doc_id")
     _assert_fk(
         runs,
         "scenario_id",
         scenarios,
         "scenario_id",
-        "rag_qa_eval_runs",
-        "rag_qa_scenarios",
+        "runs.scenario_id -> scenarios.scenario_id",
     )
+    _assert_fk(events, "run_id", runs, "run_id", "events.run_id -> runs.run_id")
+    _assert_fk(events, "chunk_id", chunks, "chunk_id", "events.chunk_id -> chunks.chunk_id")
+    if "scenario_id" in events.columns:
+        _assert_fk(
+            events,
+            "scenario_id",
+            scenarios,
+            "scenario_id",
+            "events.scenario_id -> scenarios.scenario_id",
+        )
 
-    # Basic checks
+    # Enums / booleans
+    bool_allowed = {0, 1}
     for table_name, df in [
-        ("rag_retrieval_events", events),
         ("rag_qa_eval_runs", runs),
-        ("rag_qa_scenarios", scenarios),
+        ("rag_retrieval_events", events),
     ]:
-        if "split" in df.columns:
-            _assert_in_set(
-                df["split"],
-                {"train", "val", "test", "validation"},
-                f"{table_name}.split",
-            )
-
-    # rank should be >= 1 if present
-    if "rank" in events.columns:
-        if (events["rank"].dropna() < 1).any():
-            _fail("[rag_retrieval_events.rank] contains values < 1")
-
-    # Boolean-like columns: accept 0/1 and True/False (and string variants)
-    bool_allowed: set[object] = {0, 1, True, False, "0", "1", "True", "False", "true", "false"}
-
-    bool_specs = [
-        ("rag_corpus_documents", docs, ["is_active", "contains_tables"]),
-        ("rag_qa_scenarios", scenarios, ["has_answer_in_corpus", "is_used_in_eval"]),
-        (
-            "rag_qa_eval_runs",
-            runs,
-            [
-                "is_correct",
-                "has_answer_in_corpus",
-                "is_noanswer_probe",
-                "has_relevant_in_top5",
-                "has_relevant_in_top10",
-                "answered_without_retrieval",
-            ],
-        ),
-    ]
-    for table_name, df, cols in bool_specs:
-        for col in cols:
+        for col in [
+            "is_correct",
+            "hallucination_flag",
+            "has_answer_in_corpus",
+            "is_noanswer_probe",
+            "answered_without_retrieval",
+            "is_relevant",
+        ]:
             if col in df.columns:
-                _assert_in_set(df[col], bool_allowed, f"{table_name}.{col}")
+                s = pd.to_numeric(df[col], errors="coerce")
+                _assert_in_set(s, bool_allowed, f"{table_name}.{col}")
+
+    if "split" in events.columns:
+        _assert_in_set(events["split"], {"train", "val", "test"}, "rag_retrieval_events.split")
+
+    # Range checks
+    if "rank" in events.columns:
+        _assert_range(events["rank"], 1, None, "rag_retrieval_events.rank")
+
+    if "retrieval_score" in events.columns:
+        # allow negative scores for some retrievers, so only check "not all non-finite"
+        finite = events["retrieval_score"].replace(
+            [float("inf"), -float("inf")],
+            pd.NA,
+        )
+        _assert(
+            finite.notna().any(),
+            "rag_retrieval_events.retrieval_score: all non-finite/NaN?",
+        )
+
+    for col in ["total_latency_ms", "retrieval_latency_ms", "generation_latency_ms"]:
+        if col in runs.columns:
+            _assert_range(runs[col], 0.0, None, f"rag_qa_eval_runs.{col}")
+
+    if "total_cost_usd" in runs.columns:
+        _assert_range(runs["total_cost_usd"], 0.0, None, "rag_qa_eval_runs.total_cost_usd")
+
+    for col in ["recall_at_k", "mrr_at_10", "faithfulness_score"]:
+        if col in runs.columns:
+            _assert_range(runs[col], 0.0, 1.0, f"rag_qa_eval_runs.{col}")
+
+    # Text sanity
+    if "chunk_text" in chunks.columns:
+        empty = (chunks["chunk_text"].astype(str).str.len() == 0).sum()
+        _assert(int(empty) == 0, "rag_corpus_chunks.chunk_text: empty strings present")
+
+    if "query" in runs.columns:
+        empty = (runs["query"].astype(str).str.len() == 0).sum()
+        _assert(int(empty) == 0, "rag_qa_eval_runs.query: empty strings present")
 
     print("✅ Dataset validation passed.")
     return 0
